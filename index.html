@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Assenze Collegio</title>
+  <meta name="description" content="Conteggio delle assenze del collegio, anche offline">
+  <meta name="theme-color" content="#1f3a5f">
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Assenze">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <main id="views">
+      <section id="v-calendario" class="view" aria-label="Calendario"></section>
+      <section id="v-riepilogo" class="view" aria-label="Riepilogo" hidden></section>
+      <section id="v-mesi" class="view" aria-label="Mesi" hidden></section>
+      <section id="v-elenco" class="view" aria-label="Elenco" hidden></section>
+      <section id="v-impostazioni" class="view" aria-label="Impostazioni" hidden></section>
+    </main>
+    <nav id="tabs" aria-label="Sezioni"></nav>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog id="dlg-periodo" aria-labelledby="dlg-periodo-t"></dialog>
+  <dialog id="dlg-codice" aria-labelledby="dlg-codice-t"></dialog>
+
+  <section id="report" aria-hidden="true"></section>
+
+  <noscript>Questa app richiede JavaScript.</noscript>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
