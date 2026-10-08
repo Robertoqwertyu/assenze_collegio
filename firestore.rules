@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Assenze Collegio - Security Rules di Cloud Firestore
+// Ogni utente può leggere e scrivere SOLO i documenti sotto users/{il proprio uid}. Tutto il resto è negato.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // l'utente è loggato (Accesso Google) e il suo uid coincide con quello nel percorso
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // un giorno: solo i campi s (stato) e t (ora della modifica, in millisecondi).
+    // t non può essere oltre 5 minuti nel futuro: un telefono con l'orologio in anticipo non può bloccare le modifiche degli altri.
+    function validDay(d) {
+      return d.keys().hasOnly(['s', 't']) && d.s in ['A', 'G', ''] && d.t is number
+        && d.t <= request.time.toMillis() + 300000;
+    }
+
+    function validSettings(d) {
+      return d.keys().hasOnly(['updatedAt', 'settings', 'chiusure', 'festivita'])
+        && d.updatedAt is number && d.updatedAt <= request.time.toMillis() + 300000 && d.settings is map && d.chiusure is list && d.festivita is list
+        && d.chiusure.size() <= 20 && d.festivita.size() <= 60;
+    }
+
+    // users/{uid}/days/AAAA-MM-GG
+    match /users/{uid}/days/{day} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && day.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && validDay(request.resource.data);
+      // "vince la modifica più recente": una scrittura più vecchia (ad esempio rimasta in coda offline) viene rifiutata
+      allow update: if isOwner(uid)
+        && validDay(request.resource.data)
+        && request.resource.data.t >= resource.data.t;
+      allow delete: if false;
+    }
+
+    // users/{uid}/meta/settings
+    match /users/{uid}/meta/settings {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validSettings(request.resource.data);
+      allow update: if isOwner(uid)
+        && validSettings(request.resource.data)
+        && request.resource.data.updatedAt >= resource.data.updatedAt;
+      allow delete: if false;
+    }
+  }
+}

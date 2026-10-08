@@ -193,20 +193,21 @@
     if (typeof st.soglia === 'number' && st.soglia > 0 && st.soglia <= 1) out.settings.soglia = st.soglia;
     if (st.oggiOverride === '' || isValidISO(st.oggiOverride)) out.settings.oggiOverride = st.oggiOverride || '';
     if (st.baseFrazione === 'validi' || st.baseFrazione === 'calendario') out.settings.baseFrazione = st.baseFrazione;
-    if (typeof st.allerta === 'number' && st.allerta >= 0) out.settings.allerta = Math.round(st.allerta);
-    if (Array.isArray(obj.chiusure)) out.chiusure = obj.chiusure.map(function (c) {
+    if (typeof st.allerta === 'number' && isFinite(st.allerta) && st.allerta >= 0 && st.allerta <= 366) out.settings.allerta = Math.round(st.allerta);
+    if (Array.isArray(obj.chiusure)) out.chiusure = obj.chiusure.slice(0, 200).map(function (c) {
       return { dal: isValidISO(c && c.dal) ? c.dal : '', al: isValidISO(c && c.al) ? c.al : '', desc: String((c && c.desc) || '').slice(0, 80) };
     });
-    if (Array.isArray(obj.festivita)) out.festivita = obj.festivita.filter(function (f) { return f && isValidISO(f.data); })
+    if (Array.isArray(obj.festivita)) out.festivita = obj.festivita.slice(0, 400).filter(function (f) { return f && isValidISO(f.data); })
       .map(function (f) { return { data: f.data, desc: String(f.desc || '').slice(0, 80) }; });
     out.marks = {};
     var mk = obj.marks && typeof obj.marks === 'object' ? obj.marks : {};
     Object.keys(mk).forEach(function (k) {
       var v = mk[k];
-      if (isValidISO(k) && v && (v.s === 'A' || v.s === 'G' || v.s === '') && typeof v.t === 'number') out.marks[k] = { s: v.s, t: v.t };
+      if (isValidISO(k) && v && (v.s === 'A' || v.s === 'G' || v.s === '') && typeof v.t === 'number' && isFinite(v.t) && v.t >= 0) out.marks[k] = { s: v.s, t: v.t };
     });
     var me = obj.meta || {};
-    out.meta = { settingsUpdatedAt: +me.settingsUpdatedAt || 0, lastExportAt: +me.lastExportAt || 0 };
+    var fin = function (x) { x = +x; return isFinite(x) && x > 0 ? x : 0; };
+    out.meta = { settingsUpdatedAt: fin(me.settingsUpdatedAt), lastExportAt: fin(me.lastExportAt) };
     return out;
   }
 
@@ -233,7 +234,43 @@
     return o;
   }
 
+
+  /* ---------- sincronizzazione con Firestore: confronto locale / remoto, giorno per giorno ---------- */
+  function validRemoteDay(d, r) {
+    return isValidISO(d) && r && typeof r === 'object' && typeof r.t === 'number' && isFinite(r.t) && (r.s === 'A' || r.s === 'G' || r.s === '');
+  }
+  /* remote: { 'AAAA-MM-GG': { s, t } } ->  adopt: giorni da prendere dal cloud;  push: giorni locali da inviare */
+  function reconcileDays(localMarks, remote) {
+    var adopt = {}, push = [], has = Object.prototype.hasOwnProperty;
+    Object.keys(remote).forEach(function (d) {
+      var r = remote[d];
+      if (!validRemoteDay(d, r)) return;
+      var l = localMarks[d];
+      if (!l || r.t > l.t) adopt[d] = { s: r.s, t: r.t };
+      else if (l.t > r.t) push.push(d);
+    });
+    Object.keys(localMarks).forEach(function (d) {
+      if (!has.call(remote, d) && localMarks[d].s) push.push(d);   // un annullamento mai arrivato sul cloud non serve inviarlo
+    });
+    return { adopt: adopt, push: push };
+  }
+  function settingsDoc(state) {
+    return { updatedAt: state.meta.settingsUpdatedAt, settings: clone(state.settings), chiusure: clone(state.chiusure), festivita: clone(state.festivita) };
+  }
+  /* remote: documento impostazioni oppure null */
+  function reconcileSettings(state, remote) {
+    var lt = state.meta.settingsUpdatedAt || 0, rt = remote && typeof remote.updatedAt === 'number' ? remote.updatedAt : 0;
+    return { action: rt > lt ? 'adopt' : (lt > rt ? 'push' : 'none') };
+  }
+  function applySettingsDoc(state, remote) {
+    var n = normalize({ settings: remote.settings, chiusure: remote.chiusure, festivita: remote.festivita, marks: {}, meta: { settingsUpdatedAt: remote.updatedAt } });
+    var out = clone(state);
+    out.settings = n.settings; out.chiusure = n.chiusure; out.festivita = n.festivita; out.meta.settingsUpdatedAt = n.meta.settingsUpdatedAt;
+    return out;
+  }
+
   return {
+    reconcileDays: reconcileDays, settingsDoc: settingsDoc, reconcileSettings: reconcileSettings, applySettingsDoc: applySettingsDoc,
     MESI: MESI, MESI_AB: MESI_AB, GIORNI: GIORNI,
     pad: pad, iso: iso, parse: parse, isValidISO: isValidISO, toDays: toDays, fromDays: fromDays, dow: dow,
     daysInMonth: daysInMonth, monthStart: monthStart, endOfMonth: endOfMonth, addMonths: addMonths,
