@@ -4,7 +4,7 @@
   var E = window.Engine;
   var KEY = 'assenze-collegio:v1', KEY_PREV = 'assenze-collegio:prev', KEY_UI = 'assenze-collegio:ui';
   var KEY_UID = 'assenze-collegio:uid', KEY_BAD = 'assenze-collegio:illeggibile';
-  var VERSION = '2.6';
+  var VERSION = '2.7';
   var DAY = 86400000;
 
   var state, res, brush = 'A', undoStack = [], tab = 'calendario', calDirty = true;
@@ -86,8 +86,8 @@
   };
   var TABS = [['calendario', 'Calendario'], ['riepilogo', 'Riepilogo'], ['mesi', 'Mesi'], ['elenco', 'Elenco'], ['impostazioni', 'Impostazioni']];
 
-  /* logo della barra laterale su PC: stesso disegno dell'icona dell'app (casa con griglia 3x3, navy su tessera bianca) */
-  var LOGO = '<svg viewBox="0 0 512 512" aria-hidden="true"><rect x="2" y="2" width="508" height="508" rx="120" fill="#fff"/><g transform="translate(256 256) scale(1.375) translate(-158.5 -159.5)"><path d="M30 135L159 31.2L213.5 74.8V45.5H251.5V105.2L288 135" fill="none" stroke="#13243e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><path d="M65.5 143L158.5 68.6L251.5 143V269.5Q251.5 287.5 233.5 287.5H83.5Q65.5 287.5 65.5 269.5Z" fill="none" stroke="#13243e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><path d="M65.5 138.5H251.5" fill="none" stroke="#13243e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><path d="M127.5 138.5V287.5M189.5 138.5V287.5M65.5 188.5H251.5M65.5 238H251.5" fill="none" stroke="#13243e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/></g></svg>';
+  /* logo della barra laterale su PC: stesso disegno dell'icona (casa con griglia 3x3, navy su tessera bianca), con linee agganciate ai pixel a 40 px */
+  var LOGO = '<svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="9.2" fill="#fff"/><path d="M5.23 17.33L20.5 5.11L26.51 9.91V7H31V13.51L35.77 17.33" fill="none" stroke="#13243e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 18L20.5 9.6L31 18V34A2 2 0 0 1 29 36H12A2 2 0 0 1 10 34Z" fill="none" stroke="#13243e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 18H31M17 18V36M24 18V36M10 24H31M10 30H31" fill="none" stroke="#13243e" stroke-width="2" stroke-linecap="butt"/></svg>';
 
   function buildNav() {
     var nav = $('#tabs');
