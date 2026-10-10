@@ -4,7 +4,7 @@
   var E = window.Engine;
   var KEY = 'assenze-collegio:v1', KEY_PREV = 'assenze-collegio:prev', KEY_UI = 'assenze-collegio:ui';
   var KEY_UID = 'assenze-collegio:uid', KEY_BAD = 'assenze-collegio:illeggibile';
-  var VERSION = '2.3';
+  var VERSION = '2.4';
   var DAY = 86400000;
 
   var state, res, brush = 'A', undoStack = [], tab = 'calendario', calDirty = true;
@@ -86,16 +86,37 @@
   };
   var TABS = [['calendario', 'Calendario'], ['riepilogo', 'Riepilogo'], ['mesi', 'Mesi'], ['elenco', 'Elenco'], ['impostazioni', 'Impostazioni']];
 
+  /* logo della barra laterale su PC: stesso disegno dell'icona dell'app (calendario navy su tessera bianca, una cella rossa) */
+  var LOGO = '<svg viewBox="0 0 512 512" aria-hidden="true"><defs><clipPath id="lgcb"><rect x="104" y="124" width="304" height="296" rx="56"/></clipPath></defs>'
+    + '<rect x="2" y="2" width="508" height="508" rx="118" fill="#fff"/><g transform="translate(256 256) scale(1.06) translate(-256 -256)">'
+    + '<rect x="104" y="124" width="304" height="296" rx="56" fill="#fff"/><rect x="104" y="124" width="304" height="88" fill="#12233f" clip-path="url(#lgcb)"/>'
+    + '<rect x="104" y="124" width="304" height="296" rx="56" fill="none" stroke="#12233f" stroke-width="22"/>'
+    + '<rect x="178" y="90" width="30" height="72" rx="15" fill="#12233f"/><rect x="304" y="90" width="30" height="72" rx="15" fill="#12233f"/>'
+    + '<rect x="138" y="238" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="200" y="238" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="262" y="238" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="324" y="238" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="138" y="292" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="200" y="292" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="262" y="292" width="50" height="44" rx="12" fill="#d23a40"/><rect x="324" y="292" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="138" y="346" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="200" y="346" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="262" y="346" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="324" y="346" width="50" height="44" rx="12" fill="#c9e8d7"/></g></svg>';
+
   function buildNav() {
     var nav = $('#tabs');
     nav.textContent = '';
+    var brand = h('div', { class: 'brand' });
+    brand.innerHTML = LOGO;
+    brand.appendChild(h('div', null, h('b', { text: 'Assenze' }), h('small', { text: 'Collegio' })));
+    nav.appendChild(brand);
+    var list = h('div', { class: 'navlist' });
     TABS.forEach(function (t) {
       var b = h('button', { type: 'button', 'data-tab': t[0], onclick: function () { setTab(t[0]); } });
-      b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[t[0]] + '</svg>';
-      b.appendChild(h('span', { text: t[1] }));
-      nav.appendChild(b);
+      var ico = h('span', { class: 'ico' });
+      ico.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[t[0]] + '</svg>';
+      b.appendChild(ico);
+      b.appendChild(h('span', { class: 'lbl', text: t[1] }));
+      list.appendChild(b);
     });
+    nav.appendChild(list);
+    /* piede della barra laterale (solo PC): stato del cloud e versione */
+    nav.appendChild(h('div', { class: 'navfoot' },
+      h('div', { class: 'cloudline off', id: 'cloudst3', role: 'button', tabindex: '0', onclick: gotoCloud, onkeydown: function (e) { if (e.key === 'Enter') gotoCloud(); } }),
+      h('small', { text: 'Versione ' + VERSION })));
     updateNav();
+    renderCloudStatus();
   }
   function updateNav() {
     document.querySelectorAll('#tabs button').forEach(function (b) {
@@ -122,7 +143,7 @@
 
   /* ---------- CALENDARIO ---------- */
   function statusLabel(st) {
-    return { regola: 'IN REGOLA', attenzione: 'ATTENZIONE: POCHE ASSENZE RIMASTE', superata: 'SOGLIA SUPERATA', verifica: 'VERIFICA IMPOSTAZIONI' }[st];
+    return { regola: 'In regola', attenzione: 'Attenzione: poche assenze rimaste', superata: 'Soglia superata', verifica: 'Verifica impostazioni' }[st];
   }
   function statusText() { return statusLabel(res.status); }
   function renderKpis() {
@@ -134,7 +155,7 @@
     $('#k-pct').textContent = okd ? pc(res.pctFine) : '–';
     var st = $('#status');
     st.className = 'status' + (res.status && res.status !== 'regola' ? ' ' + res.status : '');
-    st.textContent = okd ? statusText() : 'VERIFICA IMPOSTAZIONI';
+    st.textContent = okd ? statusText() : 'Verifica impostazioni';
     $('#info').textContent = okd
       ? 'Assenze usate ' + res.usate + ' su ' + res.maxAss + '  ·  Giustificate ' + res.giust + '  ·  Presenze finora ' + res.presFinora
         + (res.mesiRim > 0 && res.mesiRim < 1 ? '  ·  Meno di 1 mese rimasto: conta il totale delle assenze rimanenti' : '')
@@ -227,26 +248,27 @@
     v.textContent = '';
     v.appendChild(h('h1', { class: 'sr-only', text: 'Assenze Collegio: calendario' }));
     var sticky = h('div', { class: 'sticky', id: 'sticky' },
+      h('div', { class: 'topline' },
+        h('div', { class: 'status', id: 'status' }),
+        h('div', { class: 'cloudst off', id: 'cloudst', role: 'button', tabindex: '0', onclick: gotoCloud, onkeydown: function (e) { if (e.key === 'Enter') gotoCloud(); } })),
       h('div', { class: 'kpis' },
         h('div', { class: 'kpi k1' }, h('small', { text: 'Assenze rimanenti' }), h('b', { id: 'k-rim' })),
         h('div', { class: 'kpi k2' }, h('small', { text: 'Mensili rimanenti' }), h('b', { id: 'k-men' })),
         h('div', { class: 'kpi k3' }, h('small', { text: 'Presenza a fine anno' }), h('b', { id: 'k-pct' }))),
-      h('div', { class: 'status', id: 'status' }),
-      h('div', { class: 'info', id: 'info' }),
-      h('div', { class: 'cloudst off', id: 'cloudst', role: 'button', tabindex: '0', onclick: gotoCloud, onkeydown: function (e) { if (e.key === 'Enter') gotoCloud(); } }),
       h('div', { class: 'toolbar' },
         h('div', { class: 'brushes', role: 'radiogroup', 'aria-label': 'Cosa segnare toccando un giorno' },
           brushBtn('A', 'Assenza'), brushBtn('G', 'Giustificata'), brushBtn('P', 'Presente')),
         h('button', { class: 'tbtn', type: 'button', text: 'Periodo…', onclick: openPeriodo }),
         h('button', { class: 'tbtn', id: 'btn-undo', type: 'button', 'aria-label': 'Annulla ultima modifica', text: '↶', onclick: undo })));
     v.appendChild(sticky);
+    v.appendChild(h('div', { class: 'info', id: 'info' }));      // fuori dalla barra fissa: occupa meno spazio mentre si scorre
 
     if (!res.days || !res.days.length) {
       v.appendChild(h('div', { class: 'warnbox', text: 'Imposta le date del periodo in Impostazioni: ' + res.check }));
       calDirty = false; renderKpis(); return;
     }
     var chips = h('div', { class: 'chips' });
-    chips.appendChild(h('button', { class: 'chip now', type: 'button', text: '▸ Oggi', onclick: function () { scrollToMonth(currentMonthKey(), true); } }));
+    chips.appendChild(h('button', { class: 'chip now', type: 'button', text: 'Oggi', onclick: function () { scrollToMonth(currentMonthKey(), true); } }));
     res.mesi.forEach(function (m) { chips.appendChild(h('button', { class: 'chip', type: 'button', text: m.labelAb, onclick: function () { scrollToMonth(m.key, true); } })); });
     v.appendChild(chips);
 
@@ -325,7 +347,7 @@
     function upd() {
       if (!from.value || !to.value || to.value < from.value) { prev.textContent = 'Controlla le date'; aft.textContent = ''; return; }
       var r = E.paintRange(state, from.value, to.value, kind, 0, res);
-      prev.textContent = r.changed.length + ' giorni validi verranno modificati';
+      prev.textContent = r.changed.length === 1 ? '1 giorno valido verrà modificato' : r.changed.length + ' giorni validi verranno modificati';
       /* "cosa succede se": stato dopo l'applicazione (utile per pianificare ponti e viaggi) */
       if (r.changed.length) {
         var a = E.compute(r.state, E.todayISO()), dl = a.rimanenti - res.rimanenti;
@@ -341,7 +363,7 @@
       undoStack.push(r.changed.map(function (c) { return { date: c.date, prev: c.prev ? c.prev.s : '' }; }));
       afterChange(r.changed.map(function (c) { return c.date; }));
       dlg.close();
-      toast(r.changed.length + ' giorni aggiornati', { label: 'ANNULLA', fn: undo });
+      toast(r.changed.length === 1 ? '1 giorno aggiornato' : r.changed.length + ' giorni aggiornati', { label: 'ANNULLA', fn: undo });
     } });
     from.addEventListener('change', function () { if (to.value < from.value) to.value = from.value; upd(); });
     to.addEventListener('change', upd);
@@ -376,14 +398,14 @@
         ['Presenze minime richieste', res.minPres, 'Arrotondato per eccesso'], ['Assenze massime consentite', res.maxAss]],
       stato: [
         ['Assenze usate (non giustificate)', res.usate], ['Assenze giustificate', res.giust, 'Valgono come presenza'],
-        ['ASSENZE RIMANENTI TOTALI', res.rimanenti, 'Negativo = soglia superata', 'big' + (res.rimanenti < 0 ? ' neg' : '')],
+        ['Assenze rimanenti totali', res.rimanenti, 'Negativo = soglia superata', 'big' + (res.rimanenti < 0 ? ' neg' : '')],
         ['Giorni validi rimanenti (da oggi incluso)', res.gvRim], ['Giorni validi trascorsi', res.gvTrasc], ['Assenze nei giorni trascorsi', res.assTrasc],
         ['Presenze finora', res.presFinora], ['% presenza finora', pc(res.pctFinora), 'Sui giorni validi trascorsi'],
         ['Presenze a fine periodo', res.presFine, 'Se da oggi sempre presente'], ['% presenza a fine periodo', pc(res.pctFine), 'Se da oggi sempre presente'],
         ['Margine sulla soglia', (res.margine >= 0 ? '+' : '') + nf(res.margine * 100, 1) + ' punti', null, res.margine < 0 ? 'neg' : '']],
       proiezione: [
         ['Mesi rimanenti (con frazioni)', nf(res.mesiRim, 2), 'Frazione del mese corrente + mesi interi successivi'],
-        ['ASSENZE MENSILI RIMANENTI', nf(res.mensili, 2), 'Assenze rimanenti ÷ mesi rimanenti', 'big'],
+        ['Assenze mensili rimanenti', nf(res.mensili, 2), 'Assenze rimanenti ÷ mesi rimanenti', 'big'],
         ['Base della frazione di mese', s.baseFrazione === 'calendario' ? 'Giorni di calendario' : 'Giorni validi']]
     };
   }
@@ -425,16 +447,18 @@
     var bw = (W - left - 6) / mesi.length, svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Assenze e giustificate per mese">';
     for (var t = 0; t <= 3; t++) {
       var val = Math.round(mx * t / 3), y = base - (base - 14) * t / 3;
-      svg += '<line x1="' + left + '" x2="' + W + '" y1="' + y + '" y2="' + y + '" stroke="currentColor" opacity=".12"/><text x="' + (left - 4) + '" y="' + (y + 3) + '" text-anchor="end">' + val + '</text>';
+      svg += '<line class="gl" x1="' + left + '" x2="' + W + '" y1="' + y + '" y2="' + y + '"/><text x="' + (left - 4) + '" y="' + (y + 3) + '" text-anchor="end">' + val + '</text>';
     }
     mesi.forEach(function (m, i) {
       var x = left + i * bw + bw * 0.12, w = bw * 0.38, ha = (base - 14) * m.ass / mx, hg = (base - 14) * m.giu / mx;
-      svg += '<rect x="' + x.toFixed(1) + '" y="' + (base - ha).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + ha.toFixed(1) + '" rx="2" fill="#d64545"/>';
-      svg += '<rect x="' + (x + w + 1).toFixed(1) + '" y="' + (base - hg).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + hg.toFixed(1) + '" rx="2" fill="#f5b942"/>';
+      svg += '<rect class="ba" x="' + x.toFixed(1) + '" y="' + (base - ha).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + ha.toFixed(1) + '" rx="2.5"/>';
+      svg += '<rect class="bg" x="' + (x + w + 1).toFixed(1) + '" y="' + (base - hg).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + hg.toFixed(1) + '" rx="2.5"/>';
+      if (m.ass) svg += '<text class="vl" x="' + (x + w / 2).toFixed(1) + '" y="' + (base - ha - 3).toFixed(1) + '" text-anchor="middle">' + m.ass + '</text>';
+      if (m.giu) svg += '<text class="vl" x="' + (x + w + 1 + w / 2).toFixed(1) + '" y="' + (base - hg - 3).toFixed(1) + '" text-anchor="middle">' + m.giu + '</text>';
       svg += '<text x="' + (x + w).toFixed(1) + '" y="' + (base + 12) + '" text-anchor="middle">' + E.MESI_AB[m.m - 1] + '</text>';
     });
-    svg += '<rect x="' + left + '" y="' + (H - 11) + '" width="8" height="8" rx="2" fill="#d64545"/><text class="lg" x="' + (left + 12) + '" y="' + (H - 3) + '">Assenze</text>';
-    svg += '<rect x="' + (left + 66) + '" y="' + (H - 11) + '" width="8" height="8" rx="2" fill="#f5b942"/><text class="lg" x="' + (left + 78) + '" y="' + (H - 3) + '">Giustificate</text>';
+    svg += '<rect class="ba" x="' + left + '" y="' + (H - 11) + '" width="8" height="8" rx="2.5"/><text class="lg" x="' + (left + 12) + '" y="' + (H - 3) + '">Assenze</text>';
+    svg += '<rect class="bg" x="' + (left + 66) + '" y="' + (H - 11) + '" width="8" height="8" rx="2.5"/><text class="lg" x="' + (left + 78) + '" y="' + (H - 3) + '">Giustificate</text>';
     return svg + '</svg>';
   }
   function mesiTable() {
@@ -525,7 +549,7 @@
         h('button', { class: 'x', type: 'button', 'aria-label': 'Elimina chiusura', text: '✕', onclick: function () { state.chiusure.splice(i, 1); touchSettings(); renderImpostazioni(); } }),
         h('input', { class: 'desc', type: 'text', maxlength: 80, placeholder: 'Descrizione', 'aria-label': 'Chiusura ' + (i + 1) + ': descrizione', value: c.desc || '', onchange: function (e) { c.desc = e.target.value; touchSettings(); } })));
     });
-    cc.appendChild(h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', text: '＋ Aggiungi chiusura', onclick: function () { state.chiusure.push({ dal: '', al: '', desc: '' }); renderImpostazioni(); } })));
+    cc.appendChild(h('div', { class: 'btns' }, h('button', { class: 'btn ghost add', type: 'button', text: 'Aggiungi chiusura', onclick: function () { state.chiusure.push({ dal: '', al: '', desc: '' }); renderImpostazioni(); } })));
     v.appendChild(cc);
 
     v.appendChild(h('h2', { text: 'Festività (escluse dal calcolo)' }));
@@ -536,7 +560,7 @@
         h('input', { class: 'desc', type: 'text', maxlength: 80, placeholder: 'Descrizione', 'aria-label': 'Festività ' + (i + 1) + ': descrizione', value: f.desc || '', onchange: function (e) { f.desc = e.target.value; touchSettings(); } }),
         h('button', { class: 'x', type: 'button', 'aria-label': 'Elimina festività', text: '✕', onclick: function () { state.festivita.splice(i, 1); touchSettings(); renderImpostazioni(); } })));
     });
-    fc.appendChild(h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', text: '＋ Aggiungi festività', onclick: function () { state.festivita.push({ data: '', desc: '' }); renderImpostazioni(); } })));
+    fc.appendChild(h('div', { class: 'btns' }, h('button', { class: 'btn ghost add', type: 'button', text: 'Aggiungi festività', onclick: function () { state.festivita.push({ data: '', desc: '' }); renderImpostazioni(); } })));
     fc.appendChild(h('div', { class: 'note', text: 'Pasqua e Pasquetta incluse; San Nicola (6 maggio) no. Le date della chiusura natalizia sono provvisorie.' }));
     v.appendChild(fc);
 
@@ -728,23 +752,24 @@
 
   /* ---------- ACCOUNT E SINCRONIZZAZIONE (Firebase: accesso Google + Firestore) ---------- */
   function cloudText() {
-    if (!fb) return { cls: 'off', t: '☁ Cloud in caricamento…' };
-    if (!fb.configured) return { cls: 'off', t: '☁ Sincronizzazione non attivata · tocca per i dettagli' };
-    if (fb.failed) return { cls: 'off', t: '☁ Cloud non disponibile (serve rete la prima volta)' };
-    if (!user) return { cls: 'off', t: '☁ Accedi con Google per sincronizzare' };
-    if (net.error) return { cls: 'err', t: '☁ ' + net.error };
+    if (!fb) return { cls: 'off', t: 'Cloud in caricamento…' };
+    if (!fb.configured) return { cls: 'off', t: 'Sincronizzazione non attivata · tocca per i dettagli' };
+    if (fb.failed) return { cls: 'off', t: 'Cloud non disponibile (serve rete la prima volta)' };
+    if (!user) return { cls: 'off', t: 'Accedi con Google per sincronizzare' };
+    if (net.error) return { cls: 'err', t: '' + net.error };
     var pend = net.pending + (net.setPending ? 1 : 0);
-    if (!navigator.onLine) return { cls: 'wait', t: '☁ Offline · ' + (pend ? pend + (pend === 1 ? ' modifica da inviare' : ' modifiche da inviare') : 'dati salvati sul dispositivo') };
-    if (pend) return { cls: 'wait', t: '☁ Sincronizzo… (' + pend + ')' };
-    if (net.fromCache) return { cls: 'wait', t: '☁ Connessione al cloud…' };
-    return { cls: 'ok', t: '☁ Sincronizzato · ' + user.email };
+    if (!navigator.onLine) return { cls: 'wait', t: 'Offline · ' + (pend ? pend + (pend === 1 ? ' modifica da inviare' : ' modifiche da inviare') : 'dati salvati sul dispositivo') };
+    if (pend) return { cls: 'wait', t: 'Sincronizzo… (' + pend + ')' };
+    if (net.fromCache) return { cls: 'wait', t: 'Connessione al cloud…' };
+    return { cls: 'ok', t: 'Sincronizzato · ' + user.email };
   }
   function renderCloudStatus() {
     var c = cloudText();
-    ['#cloudst', '#cloudst2'].forEach(function (sel) {
-      var el = $(sel); if (!el) return;
-      el.className = (sel === '#cloudst' ? 'cloudst ' : 'cloudline ') + c.cls;
+    [['#cloudst', 'cloudst'], ['#cloudst2', 'cloudline'], ['#cloudst3', 'cloudline']].forEach(function (p) {
+      var el = $(p[0]); if (!el) return;
+      el.className = p[1] + ' ' + c.cls;
       el.textContent = c.t;
+      el.title = c.t;
     });
   }
   function gotoCloud() { setTab('impostazioni'); var el = $('#cloud-card'); if (el) el.scrollIntoView({ block: 'start' }); }

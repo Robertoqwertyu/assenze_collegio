@@ -2,7 +2,7 @@
    se la rete manca o è lenta (oltre 4 secondi) usa la copia salvata, quindi funziona anche in aereo.
    NESSUN numero di versione da cambiare a mano: basta sostituire i file su GitHub. */
 const CACHE = 'assenze-app';            // nome stabile: non va mai cambiato
-const CORE = ['./', './index.html', './styles.css', './engine.js', './xlsx.js', './modello.xlsx', './app.js', './manifest.webmanifest',
+const CORE = ['./', './index.html', './styles.css', './engine.js', './xlsx.js', './modello.xlsx', './app.js', './figtree.woff2', './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon.png'];
 const SDK_HOST = 'https://www.gstatic.com';
 const SDK_PATH = '/firebasejs/';        // SDK Firebase dalla CDN Google: file con versione nell'indirizzo, quindi immutabili
