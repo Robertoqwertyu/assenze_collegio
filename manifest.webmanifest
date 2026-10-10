@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Assenze Collegio",
-  "short_name": "Assenze",
+  "name": "StayTrack",
+  "short_name": "StayTrack",
   "description": "Conteggio delle assenze del collegio, anche offline",
   "lang": "it",
   "start_url": "./",

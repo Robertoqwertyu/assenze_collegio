@@ -1,10 +1,10 @@
-/* Assenze Collegio - interfaccia. Il calcolo è in engine.js (stessa logica del foglio Excel). */
+/* StayTrack (assenze del collegio) - interfaccia. Il calcolo è in engine.js (stessa logica del foglio Excel). */
 (function () {
   'use strict';
   var E = window.Engine;
   var KEY = 'assenze-collegio:v1', KEY_PREV = 'assenze-collegio:prev', KEY_UI = 'assenze-collegio:ui';
   var KEY_UID = 'assenze-collegio:uid', KEY_BAD = 'assenze-collegio:illeggibile';
-  var VERSION = '2.4';
+  var VERSION = '2.6';
   var DAY = 86400000;
 
   var state, res, brush = 'A', undoStack = [], tab = 'calendario', calDirty = true;
@@ -86,20 +86,15 @@
   };
   var TABS = [['calendario', 'Calendario'], ['riepilogo', 'Riepilogo'], ['mesi', 'Mesi'], ['elenco', 'Elenco'], ['impostazioni', 'Impostazioni']];
 
-  /* logo della barra laterale su PC: stesso disegno dell'icona dell'app (calendario navy su tessera bianca, una cella rossa) */
-  var LOGO = '<svg viewBox="0 0 512 512" aria-hidden="true"><defs><clipPath id="lgcb"><rect x="104" y="124" width="304" height="296" rx="56"/></clipPath></defs>'
-    + '<rect x="2" y="2" width="508" height="508" rx="118" fill="#fff"/><g transform="translate(256 256) scale(1.06) translate(-256 -256)">'
-    + '<rect x="104" y="124" width="304" height="296" rx="56" fill="#fff"/><rect x="104" y="124" width="304" height="88" fill="#12233f" clip-path="url(#lgcb)"/>'
-    + '<rect x="104" y="124" width="304" height="296" rx="56" fill="none" stroke="#12233f" stroke-width="22"/>'
-    + '<rect x="178" y="90" width="30" height="72" rx="15" fill="#12233f"/><rect x="304" y="90" width="30" height="72" rx="15" fill="#12233f"/>'
-    + '<rect x="138" y="238" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="200" y="238" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="262" y="238" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="324" y="238" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="138" y="292" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="200" y="292" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="262" y="292" width="50" height="44" rx="12" fill="#d23a40"/><rect x="324" y="292" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="138" y="346" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="200" y="346" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="262" y="346" width="50" height="44" rx="12" fill="#c9e8d7"/><rect x="324" y="346" width="50" height="44" rx="12" fill="#c9e8d7"/></g></svg>';
+  /* logo della barra laterale su PC: stesso disegno dell'icona dell'app (casa con griglia 3x3, navy su tessera bianca) */
+  var LOGO = '<svg viewBox="0 0 512 512" aria-hidden="true"><rect x="2" y="2" width="508" height="508" rx="120" fill="#fff"/><g transform="translate(256 256) scale(1.375) translate(-158.5 -159.5)"><path d="M30 135L159 31.2L213.5 74.8V45.5H251.5V105.2L288 135" fill="none" stroke="#13243e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><path d="M65.5 143L158.5 68.6L251.5 143V269.5Q251.5 287.5 233.5 287.5H83.5Q65.5 287.5 65.5 269.5Z" fill="none" stroke="#13243e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><path d="M65.5 138.5H251.5" fill="none" stroke="#13243e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><path d="M127.5 138.5V287.5M189.5 138.5V287.5M65.5 188.5H251.5M65.5 238H251.5" fill="none" stroke="#13243e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/></g></svg>';
 
   function buildNav() {
     var nav = $('#tabs');
     nav.textContent = '';
     var brand = h('div', { class: 'brand' });
     brand.innerHTML = LOGO;
-    brand.appendChild(h('div', null, h('b', { text: 'Assenze' }), h('small', { text: 'Collegio' })));
+    brand.appendChild(h('div', null, h('b', { text: 'StayTrack' }), h('small', { text: 'Assenze collegio' })));
     nav.appendChild(brand);
     var list = h('div', { class: 'navlist' });
     TABS.forEach(function (t) {
@@ -246,7 +241,7 @@
     if (!calDirty && v.firstChild) { renderKpis(); return; }
     var y = window.scrollY;
     v.textContent = '';
-    v.appendChild(h('h1', { class: 'sr-only', text: 'Assenze Collegio: calendario' }));
+    v.appendChild(h('h1', { class: 'sr-only', text: 'StayTrack: calendario' }));
     var sticky = h('div', { class: 'sticky', id: 'sticky' },
       h('div', { class: 'topline' },
         h('div', { class: 'status', id: 'status' }),
@@ -600,7 +595,7 @@
 
   /* ---------- backup / importazione ---------- */
   var MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-  function fileName(ext) { return 'assenze-collegio-' + E.todayISO() + (ext || '.json'); }
+  function fileName(ext) { return 'staytrack-' + E.todayISO() + (ext || '.json'); }
   /* consegna un file: condivisione di sistema (telefono) oppure download */
   function deliver(data, name, mime, share, title) {
     var blob = new Blob([data], { type: mime });
@@ -615,7 +610,7 @@
   }
   function exportFile(share) {
     state.meta.lastExportAt = Date.now(); save(true);
-    var how = deliver(JSON.stringify(E.exportObject(state, Date.now()), null, 1), fileName('.json'), 'application/json', share, 'Backup assenze collegio');
+    var how = deliver(JSON.stringify(E.exportObject(state, Date.now()), null, 1), fileName('.json'), 'application/json', share, 'Backup StayTrack');
     if (how === 'saved') toast('Backup salvato: ' + fileName('.json'));
     updateNav(); renderImpostazioni();
   }
@@ -643,7 +638,7 @@
       .then(function (buf) { return Xlsx.build(new Uint8Array(buf), state, res, Date.now()); })
       .then(function (out) {
         state.meta.lastExportAt = Date.now(); save(true);
-        var how = deliver(out.bytes, fileName('.xlsx'), MIME_XLSX, share, 'Assenze collegio (Excel)');
+        var how = deliver(out.bytes, fileName('.xlsx'), MIME_XLSX, share, 'StayTrack (Excel)');
         toast((how === 'saved' ? 'Excel salvato: ' + fileName('.xlsx') : 'Condivisione del file Excel…') + (out.warnings.length ? ' · ' + out.warnings.join('; ') : ''));
         updateNav(); if (tab === 'impostazioni') renderImpostazioni();
       }).catch(function () { toast('Esportazione Excel non riuscita (serve aver aperto l\'app almeno una volta con la rete)'); });
@@ -978,7 +973,7 @@
   function printReport() {
     if (!res.ok) { toast(res.check); return; }
     var r = summaryRows(), rep = $('#report'); rep.textContent = '';
-    rep.appendChild(h('h1', { text: 'Assenze Collegio - Riepilogo' }));
+    rep.appendChild(h('h1', { text: 'StayTrack - Riepilogo' }));
     rep.appendChild(h('p', { text: 'Aggiornato al ' + E.fmtDate(res.oggi) + '  ·  periodo ' + E.fmtDate(state.settings.inizio) + ' - ' + E.fmtDate(state.settings.fine) }));
     function tbl(list) { return h('table', null, h('tbody', null, list.map(function (x) { return h('tr', null, h('th', { text: x[0] }), h('td', { text: String(x[1]) })); }))); }
     rep.appendChild(h('h2', { text: 'Stato attuale' })); rep.appendChild(tbl(r.stato));
